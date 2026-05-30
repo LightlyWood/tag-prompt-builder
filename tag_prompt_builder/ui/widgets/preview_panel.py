@@ -1,10 +1,12 @@
 # ui/widgets/preview_panel.py
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QPushButton, QLabel, QHBoxLayout, QMessageBox
-from PyQt6.QtCore import Qt
-from utils.bracket_checker import check_brackets
+from PyQt6.QtCore import Qt, pyqtSignal
+from tag_prompt_builder.ui.helpers.bracket_checker import check_brackets
 import pyperclip
 
 class PreviewPanel(QWidget):
+    clipboard_copied = pyqtSignal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.text_edit = QTextEdit()
@@ -43,3 +45,4 @@ class PreviewPanel(QWidget):
         if not valid:
             QMessageBox.warning(self, "括号错误", msg)
         pyperclip.copy(self.output_text)
+        self.clipboard_copied.emit(self.output_text)

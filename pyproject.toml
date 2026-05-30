@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tag_prompt_builder"
+version = "0.7.0"
+description = "一个基于PyQt6的提示词构建工具"
+requires-python = ">=3.10"
+dependencies = [
+    "PyQt6>=6.5",
+    "pyperclip",
+]
+
+[project.scripts]
+tag-prompt-builder = "tag_prompt_builder.main:main"

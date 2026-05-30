@@ -1,3 +1,4 @@
+# models/tag_item.py
 import uuid
 from typing import Optional, List
 
@@ -5,9 +6,14 @@ class TagItem:
     def __init__(self, name: str, is_folder: bool = False,
                  parent: Optional['TagItem'] = None,
                  display_name: Optional[str] = None,
-                 urls: Optional[List[str]] = None):
+                 urls: Optional[List[str]] = None,
+                 starred: bool = False,
+                 wiki_url: Optional[str] = None,
+                 aliases: Optional[List[str]] = None,
+                 description: str = ""):
+
         self.id = str(uuid.uuid4())[:8]
-        self.name = name                           # 英文真实值
+        self.name = name
         self.display_name = display_name if display_name is not None else name
         self.is_folder = is_folder
         self.parent = parent
@@ -15,7 +21,11 @@ class TagItem:
         self.checked = False
         self.locked = False
         self.single_selection = False
-        self.urls = urls if urls is not None else []   # 新增：参考网址列表
+        self.urls = urls if urls is not None else []
+        self.starred = starred
+        self.wiki_url = wiki_url
+        self.aliases = aliases if aliases is not None else []
+        self.description = description
 
     def add_child(self, child: 'TagItem'):
         child.parent = self

@@ -1,4 +1,4 @@
-# utils/bracket_checker.py
+# ui/helpers/bracket_checker.py
 """检查提示词中括号配对及权重格式"""
 import re
 
@@ -20,5 +20,4 @@ def check_brackets(text: str) -> (bool, str):
     # 简单检查权重格式：(text:1.2) 无空格等
     # 这里仅做提示，不强制报错
     pattern = re.compile(r'\([^)]*:\d+(\.\d+)?\)')
-    # 不做严格报错，只提示
     return True, ""

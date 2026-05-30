@@ -1,13 +1,17 @@
 # models/tag_model.py
-from PyQt6.QtCore import QAbstractItemModel, QModelIndex, Qt, QMimeData
+from PyQt6.QtCore import QAbstractItemModel, QModelIndex, Qt, QMimeData, pyqtSignal
 from PyQt6.QtGui import QColor
-from models.tag_item import TagItem
+from tag_prompt_builder.models.tag_item import TagItem
 
+# 第一个 TagTreeModel（包含互斥信号，暂保留以待视图使用）
 class TagTreeModel(QAbstractItemModel):
+    mutual_exclusion_violation = pyqtSignal(TagItem, TagItem)  # 文件夹, 新选中标签
+
     def __init__(self, root: TagItem, parent=None):
         super().__init__(parent)
         self._root = root
 
+    # 必须实现的抽象方法（防止无法实例化）
     def index(self, row, column, parent=QModelIndex()):
         if not self.hasIndex(row, column, parent):
             return QModelIndex()
@@ -35,42 +39,6 @@ class TagTreeModel(QAbstractItemModel):
     def columnCount(self, parent=QModelIndex()):
         return 1
 
-    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
-        if not index.isValid():
-            return None
-        item = self.item_from_index(index)
-        if role == Qt.ItemDataRole.DisplayRole:
-            return item.display_name          # 显示中文名
-        elif role == Qt.ItemDataRole.CheckStateRole:
-            if not item.is_folder:
-                return Qt.CheckState.Checked if item.checked else Qt.CheckState.Unchecked
-        elif role == Qt.ItemDataRole.ForegroundRole:
-            if item.is_folder and item.single_selection:
-                return QColor('blue')
-        elif role == Qt.ItemDataRole.UserRole:
-            return item                       # 传递原始对象
-        return None
-
-    def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
-        if not index.isValid():
-            return False
-        item = self.item_from_index(index)
-        if role == Qt.ItemDataRole.CheckStateRole and not item.is_folder:
-            item.checked = (value == Qt.CheckState.Checked.value)
-            if item.parent and item.parent.single_selection and item.checked:
-                for sibling in item.parent.children:
-                    if sibling is not item and sibling.checked:
-                        sibling.checked = False
-                        sib_idx = self.index_from_item(sibling)
-                        self.dataChanged.emit(sib_idx, sib_idx, [Qt.ItemDataRole.CheckStateRole])
-            self.dataChanged.emit(index, index, [Qt.ItemDataRole.CheckStateRole])
-            return True
-        elif role == Qt.ItemDataRole.EditRole:
-            item.display_name = value   # 允许编辑显示名
-            self.dataChanged.emit(index, index, [Qt.ItemDataRole.DisplayRole])
-            return True
-        return False
-
     def flags(self, index):
         if not index.isValid():
             return Qt.ItemFlag.NoItemFlags
@@ -79,6 +47,42 @@ class TagTreeModel(QAbstractItemModel):
         if not item.is_folder:
             flags |= Qt.ItemFlag.ItemIsUserCheckable
         return flags
+
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        if not index.isValid():
+            return None
+        item = self.item_from_index(index)
+        if role == Qt.ItemDataRole.DisplayRole:
+            return item.display_name
+        elif role == Qt.ItemDataRole.CheckStateRole:
+            if not item.is_folder:
+                return Qt.CheckState.Checked if item.checked else Qt.CheckState.Unchecked
+        elif role == Qt.ItemDataRole.ForegroundRole:
+            if item.is_folder and item.single_selection:
+                return QColor('blue')
+        elif role == Qt.ItemDataRole.UserRole:
+            return item
+        return None
+
+    def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
+        if not index.isValid():
+            return False
+        item = self.item_from_index(index)
+        if role == Qt.ItemDataRole.CheckStateRole and not item.is_folder:
+            new_checked = (value == Qt.CheckState.Checked.value)
+            if new_checked and item.parent and item.parent.single_selection:
+                for sibling in item.parent.children:
+                    if sibling is not item and sibling.checked:
+                        self.mutual_exclusion_violation.emit(item.parent, item)
+                        return False
+            item.checked = new_checked
+            self.dataChanged.emit(index, index, [Qt.ItemDataRole.CheckStateRole])
+            return True
+        elif role == Qt.ItemDataRole.EditRole:
+            item.display_name = value
+            self.dataChanged.emit(index, index, [Qt.ItemDataRole.DisplayRole])
+            return True
+        return False
 
     def item_from_index(self, index):
         return index.internalPointer() if index.isValid() else self._root
@@ -115,14 +119,11 @@ class TagTreeModel(QAbstractItemModel):
             self.endRemoveRows()
 
     def move_item(self, src_index, dest_parent_index, dest_row):
-        """拖拽移动（需配合 View 实现）"""
-        # 简单实现，实际需要更多检查
         item = self.item_from_index(src_index)
         src_parent = item.parent
         dest_parent = self.item_from_index(dest_parent_index)
         if not src_parent or not dest_parent.is_folder:
             return
-        # 不允许移至子代
         temp = dest_parent
         while temp:
             if temp is item:

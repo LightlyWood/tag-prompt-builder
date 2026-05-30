@@ -11,6 +11,7 @@
     <OutputPath>.</OutputPath>
     <Name>tag_prompt_builder</Name>
     <RootNamespace>tag_prompt_builder</RootNamespace>
+    <SuppressEnvironmentCreationPrompt>True</SuppressEnvironmentCreationPrompt>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -23,38 +24,42 @@
   <ItemGroup>
     <Compile Include="app_config.py" />
     <Compile Include="main.py" />
+    <Compile Include="managers\random_pool_manager.py" />
     <Compile Include="managers\tag_manager.py" />
     <Compile Include="models\tag_item.py" />
     <Compile Include="models\tag_model.py" />
+    <Compile Include="resources\__init__.py" />
+    <Compile Include="ui\dialogs\layered_sort_panel.py" />
+    <Compile Include="ui\dialogs\pool_tag_edit_dialog.py" />
     <Compile Include="ui\dialogs\preset_dialog.py" />
+    <Compile Include="ui\dialogs\preset_manager_dialog.py" />
+    <Compile Include="ui\dialogs\random_pool_manager_dialog.py" />
+    <Compile Include="ui\dialogs\random_slot_dialog.py" />
+    <Compile Include="ui\helpers\__init__.py" />
     <Compile Include="ui\main_window.py" />
+    <Compile Include="ui\widgets\favorites_panel.py" />
+    <Compile Include="ui\widgets\layered_sort_panel.py" />
     <Compile Include="ui\widgets\preview_panel.py" />
     <Compile Include="ui\widgets\sort_panel.py" />
+    <Compile Include="ui\widgets\tag_detail_panel.py" />
+    <Compile Include="ui\widgets\tag_filter_proxy.py" />
     <Compile Include="ui\widgets\tag_tree_view.py" />
     <Compile Include="ui\widgets\__init__.py" />
-    <Compile Include="utils\bracket_checker.py" />
-    <Compile Include="utils\clipboard.py" />
+    <Compile Include="ui\helpers\bracket_checker.py" />
+    <Compile Include="ui\helpers\clipboard.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="models\" />
     <Folder Include="managers\" />
-    <Folder Include="data\" />
-    <Folder Include="presets\" />
+    <Folder Include="resources\" />
+    <Folder Include="ui\helpers\" />
     <Folder Include="ui\widgets\" />
-    <Folder Include="ui\widgets\__pycache__\" />
-    <Folder Include="utils\" />
     <Folder Include="ui\" />
     <Folder Include="ui\dialogs\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="data\default_tags.json" />
-    <Content Include="data\style_bases.json" />
+    <Content Include="resources\default_tags.json" />
     <Content Include="pyinstaller.spec" />
-    <Content Include="requirements.txt" />
-    <Content Include="ui\widgets\__pycache__\preview_panel.cpython-310.pyc" />
-    <Content Include="ui\widgets\__pycache__\sort_panel.cpython-310.pyc" />
-    <Content Include="ui\widgets\__pycache__\tag_tree_view.cpython-310.pyc" />
-    <Content Include="ui\widgets\__pycache__\__init__.cpython-310.pyc" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

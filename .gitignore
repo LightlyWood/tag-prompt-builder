@@ -1,26 +1,22 @@
+# Visual Studio
+.vs/
+
 # Python
 __pycache__/
-*.py[cod]
-*.spec
+*.pyc
+*.pyo
 *.egg-info/
 dist/
 build/
-.vs/
-*.slnx
-*.pyproj
-*.pyproj.user
+*.spec
+
+# 用户数据文件（不提交个人标签库）
+tags.json
+recent.json
+random_pools.json
+style_bases.json
+presets/
 
 # 虚拟环境
 venv/
-.venv/
-
-# IDE
-.vscode/
-.idea/
-
-# 系统文件
-.DS_Store
-Thumbs.db
-
-# 用户预设（可选：如果你想保留示例预设，可不上传实际用户数据）
-presets/*.json
+.env
