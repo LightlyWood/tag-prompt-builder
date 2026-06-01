@@ -1,3 +1,5 @@
+#.gitignore
+
 # Visual Studio
 .vs/
 
@@ -20,3 +22,6 @@ presets/
 # 虚拟环境
 venv/
 .env
+
+# Visual Studio user settings
+*.pyproj.user

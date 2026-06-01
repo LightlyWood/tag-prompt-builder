@@ -1,3 +1,5 @@
+#requirements.txt
+
 PyQt6>=6.5
 pyperclip
 pytest>=7.0

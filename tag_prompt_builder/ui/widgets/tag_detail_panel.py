@@ -1,4 +1,4 @@
-# ui/widgets/tag_detail_panel.py
+# tag_prompt_builder/ui/widgets/tag_detail_panel.py
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QScrollArea, QHBoxLayout
 from PyQt6.QtCore import Qt, QUrl
 from PyQt6.QtGui import QDesktopServices
@@ -32,7 +32,7 @@ class TagDetailPanel(QWidget):
         self.wiki_link = QLabel()
         self.wiki_link.setOpenExternalLinks(True)
         self.wiki_link.setWordWrap(True)
-        self.wiki_link.setTextFormat(Qt.TextFormat.RichText)  # 确保 HTML 链接生效
+        self.wiki_link.setTextFormat(Qt.TextFormat.RichText)
         self.scroll_layout.addWidget(self.wiki_link)
 
         self.aliases_label = QLabel()

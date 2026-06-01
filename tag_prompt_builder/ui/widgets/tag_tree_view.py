@@ -1,4 +1,4 @@
-# ui/widgets/tag_tree_view.py
+# tag_prompt_builder/ui/widgets/tag_tree_view.py
 from PyQt6.QtWidgets import (QTreeView, QMenu, QInputDialog, QMessageBox, QDialog,
                              QVBoxLayout, QTextEdit, QDialogButtonBox, QLineEdit,
                              QWidget, QHBoxLayout, QListWidget, QListWidgetItem)
@@ -18,12 +18,9 @@ class TagTreeView(QWidget):
         self.tag_manager = tag_manager
         self.source_model = model
 
-        # 连接互斥冲突信号
         self.source_model.mutual_exclusion_violation.connect(self.on_mutual_exclusion_violation)
-        # ---------- 新增：连接 model 数据变化以转发 tag_checked_changed ----------
         self.source_model.dataChanged.connect(self.on_model_data_changed)
 
-        # --- UI 构建 ---
         self.proxy_model = TagFilterProxyModel(self)
         self.proxy_model.setSourceModel(self.source_model)
 
@@ -41,7 +38,6 @@ class TagTreeView(QWidget):
         self.tree_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree_view.customContextMenuRequested.connect(self.show_context_menu)
 
-        # 拦截鼠标点击以区分复选框和文本
         self.tree_view.viewport().installEventFilter(self)
 
         layout = QVBoxLayout(self)
@@ -49,12 +45,10 @@ class TagTreeView(QWidget):
         layout.addWidget(self.search_input)
         layout.addWidget(self.tree_view)
 
-    # ---------- 新增槽：当模型数据变化时（尤其是复选框状态）转发信号 ----------
     def on_model_data_changed(self, topLeft, bottomRight, roles):
         if Qt.ItemDataRole.CheckStateRole in roles:
             self.tag_checked_changed.emit()
 
-    # ---------- 互斥冲突处理 ----------
     def on_mutual_exclusion_violation(self, folder: TagItem, new_tag: TagItem):
         current_checked = None
         for sibling in folder.children:
@@ -68,7 +62,7 @@ class TagTreeView(QWidget):
             self.tag_checked_changed.emit()
             return
 
-        msg = f"文件夹「{folder.name}」已选中「{current_checked.display_name}」，互斥模式下通常只需一个。\n请选择操作："
+        msg = f"标签组「{folder.name}」已选中「{current_checked.display_name}」，互斥模式下通常只需一个。\n请选择操作："
         dialog = QMessageBox(self)
         dialog.setWindowTitle("互斥警告")
         dialog.setText(msg)
@@ -92,7 +86,6 @@ class TagTreeView(QWidget):
             self.source_model.dataChanged.emit(idx_new, idx_new, [Qt.ItemDataRole.CheckStateRole])
             self.tag_checked_changed.emit()
 
-    # ---------- 事件过滤器 ----------
     def eventFilter(self, obj, event):
         if obj is self.tree_view.viewport() and event.type() == event.Type.MouseButtonRelease:
             pos = event.pos()
@@ -117,7 +110,7 @@ class TagTreeView(QWidget):
         proxy_index = self.tree_view.indexAt(pos)
         if not proxy_index.isValid():
             menu = QMenu(self)
-            add_folder = QAction("新建一级文件夹", self)
+            add_folder = QAction("新建一级标签组", self)
             add_folder.triggered.connect(lambda: self.add_root_folder())
             menu.addAction(add_folder)
             menu.exec(self.tree_view.viewport().mapToGlobal(pos))
@@ -128,7 +121,7 @@ class TagTreeView(QWidget):
 
         menu = QMenu(self)
         if item.is_folder:
-            add_folder = QAction("新建子文件夹", self)
+            add_folder = QAction("新建子标签组", self)
             add_folder.triggered.connect(lambda checked, idx=source_index: self.add_folder(idx))
             menu.addAction(add_folder)
             add_tag = QAction("新建标签", self)
@@ -147,14 +140,14 @@ class TagTreeView(QWidget):
             toggle_lock = QAction("锁定" if not item.locked else "解锁", self)
             toggle_lock.triggered.connect(lambda checked, idx=source_index: self.toggle_lock(idx))
             menu.addAction(toggle_lock)
-            copy_role = QAction("复制角色文件夹", self)
+            copy_role = QAction("复制角色标签组", self)
             copy_role.triggered.connect(lambda checked, idx=source_index: self.copy_role(idx))
             menu.addAction(copy_role)
             menu.addSeparator()
-            save_tag_preset_action = QAction("保存为词组预设", self)
+            save_tag_preset_action = QAction("保存为组合", self)
             save_tag_preset_action.triggered.connect(lambda checked, idx=source_index: self.save_as_tag_preset(idx))
             menu.addAction(save_tag_preset_action)
-            load_tag_preset_action = QAction("加载词组预设", self)
+            load_tag_preset_action = QAction("加载组合", self)
             load_tag_preset_action.triggered.connect(lambda checked, idx=source_index: self.load_tag_preset(idx))
             menu.addAction(load_tag_preset_action)
         else:
@@ -197,7 +190,6 @@ class TagTreeView(QWidget):
         if not item.is_folder:
             self.tag_detail_requested.emit(item)
 
-    # ---------- 词组预设操作 ----------
     def save_as_tag_preset(self, source_index):
         folder_item = self.source_model.item_from_index(source_index)
         if not folder_item.is_folder:
@@ -211,9 +203,9 @@ class TagTreeView(QWidget):
                     tag_ids.append(child.full_id())
         collect_checked(folder_item)
         if not tag_ids:
-            QMessageBox.information(self, "无选中", "当前文件夹下没有选中的标签。")
+            QMessageBox.information(self, "无选中", "当前标签组下没有选中的标签。")
             return
-        preset_name, ok = QInputDialog.getText(self, "保存词组预设", "预设名称：")
+        preset_name, ok = QInputDialog.getText(self, "保存组合", "组合名称：")
         if ok and preset_name.strip():
             self.tag_manager.save_tag_preset(preset_name.strip(), tag_ids)
 
@@ -223,40 +215,37 @@ class TagTreeView(QWidget):
             return
         presets = self.tag_manager.list_tag_presets()
         if not presets:
-            QMessageBox.information(self, "无预设", "还没有保存任何词组预设。")
+            QMessageBox.information(self, "无组合", "还没有保存任何组合。")
             return
-        item, ok = QInputDialog.getItem(self, "加载词组预设", "选择预设：", presets, 0, False)
+        item, ok = QInputDialog.getItem(self, "加载组合", "选择组合：", presets, 0, False)
         if ok and item:
             tag_ids = self.tag_manager.load_tag_preset(item)
             if not tag_ids:
-                QMessageBox.warning(self, "空预设", "该预设不含任何标签。")
+                QMessageBox.warning(self, "空组合", "该组合不含任何标签。")
                 return
             matched = 0
             for fid in tag_ids:
                 tag = self.tag_manager.find_item_by_full_id(fid)
                 if tag and not tag.is_folder:
-                    parent = tag.parent
-                    while parent:
-                        if parent == folder_item:
-                            tag.checked = True
-                            matched += 1
-                            break
-                        parent = parent.parent
-            self.source_model.dataChanged.emit(QModelIndex(), QModelIndex())
+                    # 使用 ID 前缀判断是否属于该文件夹子树
+                    if fid.startswith(folder_item.id + '/'):
+                        tag.checked = True
+                        matched += 1
+            self.source_model.beginResetModel()
+            self.source_model.endResetModel()
             self.tag_checked_changed.emit()
             QMessageBox.information(self, "加载完成", f"成功勾选 {matched} 个标签。")
 
-    # ---------- 原有操作方法 ----------
     def add_root_folder(self):
         self.search_input.clear()
-        name, ok = QInputDialog.getText(self, "新建文件夹", "文件夹名称:")
+        name, ok = QInputDialog.getText(self, "新建标签组", "标签组名称:")
         if ok and name:
             self.source_model.append_tag(QModelIndex(), name, is_folder=True)
             self.tree_view.expandAll()
 
     def add_folder(self, source_index):
         self.search_input.clear()
-        name, ok = QInputDialog.getText(self, "新建子文件夹", "名称:")
+        name, ok = QInputDialog.getText(self, "新建子标签组", "名称:")
         if ok and name:
             self.source_model.append_tag(source_index, name, is_folder=True)
             self.tree_view.expandAll()
@@ -308,23 +297,19 @@ class TagTreeView(QWidget):
         self.source_model.dataChanged.emit(source_index, source_index)
 
     def copy_role(self, source_index):
+        """复制标签组及其全部子内容（基于数据库复制）"""
         item = self.source_model.item_from_index(source_index)
         if not item.is_folder:
             return
-        new_name = f"{item.name}_copy"
-        new_idx = self.source_model.append_tag(self.source_model.parent(source_index), new_name, is_folder=True)
-        self._clone_tree(item, self.source_model.item_from_index(new_idx))
-        self.tree_view.expandAll()
-        self.tag_checked_changed.emit()
-
-    def _clone_tree(self, src, dest):
-        for child in src.children:
-            if child.is_folder:
-                new_child = TagItem(child.name, is_folder=True, display_name=child.display_name)
-                dest.add_child(new_child)
-                self._clone_tree(child, new_child)
-            else:
-                dest.add_child(TagItem(child.name, is_folder=False, display_name=child.display_name, urls=child.urls.copy()))
+        try:
+            new_id = self.tag_manager.copy_subtree(item.id)
+            QMessageBox.information(self, "复制成功", f"标签组已复制为 {item.name}_copy")
+            self.source_model.beginResetModel()
+            self.source_model.endResetModel()
+            self.tree_view.expandAll()
+            self.tag_checked_changed.emit()
+        except Exception as e:
+            QMessageBox.warning(self, "复制失败", str(e))
 
     def edit_urls(self, source_index):
         item = self.source_model.item_from_index(source_index)
@@ -348,5 +333,5 @@ class TagTreeView(QWidget):
         item = self.source_model.item_from_index(source_index)
         item.starred = not item.starred
         if self.tag_manager:
-            self.tag_manager.save_library()
+            self.tag_manager.toggle_star(item.id, item.starred)
         self.favorites_changed.emit()

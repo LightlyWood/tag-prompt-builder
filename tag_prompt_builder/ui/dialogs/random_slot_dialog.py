@@ -1,4 +1,4 @@
-# ui/dialogs/random_slot_dialog.py
+# tag_prompt_builder/ui/dialogs/random_slot_dialog.py
 from PyQt6.QtWidgets import (QDialog, QFormLayout, QComboBox, QSpinBox, QCheckBox,
                              QDialogButtonBox, QMessageBox)
 from tag_prompt_builder.managers.tag_manager import TagManager

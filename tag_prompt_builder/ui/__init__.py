@@ -1,1 +1,1 @@
-# ui/__init__.py
+# tag_prompt_builder/ui/__init__.py

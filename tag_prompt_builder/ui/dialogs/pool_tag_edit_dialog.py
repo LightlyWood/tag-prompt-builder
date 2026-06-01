@@ -1,4 +1,4 @@
-# ui/dialogs/pool_tag_edit_dialog.py
+# tag_prompt_builder/ui/dialogs/pool_tag_edit_dialog.py
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QListWidget,
                              QPushButton, QInputDialog, QMessageBox)
 from tag_prompt_builder.managers.random_pool_manager import RandomPoolManager

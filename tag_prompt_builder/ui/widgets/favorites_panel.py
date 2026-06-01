@@ -1,4 +1,4 @@
-# ui/widgets/favorites_panel.py
+# tag_prompt_builder/ui/widgets/favorites_panel.py
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QPushButton
 from PyQt6.QtCore import Qt, pyqtSignal
 from tag_prompt_builder.models.tag_item import TagItem
@@ -18,16 +18,7 @@ class FavoritesPanel(QWidget):
 
     def refresh(self):
         self.list_widget.clear()
-        favorites = []
-        def collect_favorites(item):
-            if not item.is_folder:
-                if item.starred:
-                    favorites.append(item)
-            else:
-                for child in item.children:
-                    collect_favorites(child)
-        collect_favorites(self.tag_manager.root)
-
+        favorites = self.tag_manager.get_starred()
         for item in favorites:
             widget_item = QListWidgetItem(item.display_name)
             widget_item.setCheckState(Qt.CheckState.Checked if item.checked else Qt.CheckState.Unchecked)

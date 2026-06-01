@@ -1,4 +1,4 @@
-# app_config.py
+# tag_prompt_builder/app_config.py
 """应用全局配置，集中管理路径、常量"""
 import os
 import sys

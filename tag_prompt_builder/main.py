@@ -1,4 +1,4 @@
-#main.py
+# tag_prompt_builder/main.py
 import sys
 from PyQt6.QtWidgets import QApplication
 from tag_prompt_builder.ui.main_window import MainWindow

@@ -1,174 +1,244 @@
-# managers/tag_manager.py
+# tag_prompt_builder/managers/tag_manager.py
 import json
 import os
+import shutil
+from collections import defaultdict
+from tag_prompt_builder.app_config import USER_DATA_DIR, PRESETS_DIR
+from tag_prompt_builder.db import TagDatabase
 from tag_prompt_builder.models.tag_item import TagItem
-from tag_prompt_builder.app_config import TAGS_FILE, PRESETS_DIR, get_default_tags_path
 from tag_prompt_builder.managers.random_pool_manager import RandomPoolManager
+from tag_prompt_builder.utils import make_tag_id
+
 
 class TagManager:
-    def __init__(self):
-        self.root = TagItem("root", is_folder=True)
+    def __init__(self, skip_load=False):
+        """
+        skip_load: 为 True 时不访问数据库，仅初始化空缓存（用于测试）
+        """
+        if not skip_load:
+            db_path = os.path.join(USER_DATA_DIR, 'tags.db')
+            if not os.path.exists(db_path):
+                self._copy_default_db(db_path)
+            self.db = TagDatabase(db_path)
+            self._load_cache()
+        else:
+            self.db = None
+            self._items = {}
+            self._children_ids = defaultdict(list)
         self.random_pool_manager = RandomPoolManager()
 
-    def get_exclusion_groups(self, tags):
-        groups = {}
-        for tag in tags:
-            folder = tag.parent
-            while folder and not folder.single_selection:
-                folder = folder.parent
-            if folder and folder.single_selection:
-                fid = folder.full_id()
-                groups.setdefault(fid, []).append(tag)   # 已修正为 setdefault
-        return groups
+    # ---------- 缓存 ----------
+    def _load_cache(self):
+        self._items = {}
+        self._children_ids = defaultdict(list)
+        with self.db.conn() as conn:
+            rows = conn.execute("SELECT * FROM tags ORDER BY sort_order, name").fetchall()
+        for row in rows:
+            item = TagItem(dict(row))
+            self._items[item.id] = item
+            pid = item.parent_id or '#root'
+            self._children_ids[pid].append(item.id)
+        # 建立树结构：为每个 item 设置 parent 和 children
+        for item in self._items.values():
+            if item.parent_id and item.parent_id in self._items:
+                parent = self._items[item.parent_id]
+                item.parent = parent
+                parent.children.append(item)
 
-    def load_default_library(self):
-        if os.path.exists(TAGS_FILE):
-            with open(TAGS_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-        else:
-            default_path = get_default_tags_path()
-            with open(default_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-        self._build_from_dict(data, self.root)
+    def _reload_cache(self):
+        self._items.clear()
+        self._children_ids.clear()
+        if self.db:
+            self._load_cache()
 
-    def _build_from_dict(self, data, parent):
-        if isinstance(data, dict):
-            for key, value in data.items():
-                folder = TagItem(key, is_folder=True)
-                parent.add_child(folder)
-                if isinstance(value, dict):
-                    folder.single_selection = value.get('single_selection', False)
-                    children = value.get('children', {})
-                    tags = value.get('tags', [])
-                    self._build_from_dict(children, folder)
-                    for entry in tags:
-                        if isinstance(entry, str):
-                            folder.add_child(TagItem(entry, is_folder=False))
-                        elif isinstance(entry, dict):
-                            folder.add_child(TagItem(
-                                entry['value'],
-                                is_folder=False,
-                                display_name=entry.get('display'),
-                                urls=entry.get('urls', []),
-                                starred=entry.get('starred', False),
-                                wiki_url=entry.get('wiki_url'),
-                                aliases=entry.get('aliases', []),
-                                description=entry.get('description', '')
-                            ))
-                elif isinstance(value, list):
-                    for entry in value:
-                        if isinstance(entry, str):
-                            folder.add_child(TagItem(entry, is_folder=False))
-                        elif isinstance(entry, dict):
-                            folder.add_child(TagItem(
-                                entry['value'],
-                                is_folder=False,
-                                display_name=entry.get('display'),
-                                urls=entry.get('urls', []),
-                                starred=entry.get('starred', False),
-                                wiki_url=entry.get('wiki_url'),
-                                aliases=entry.get('aliases', []),
-                                description=entry.get('description', '')
-                            ))
-        elif isinstance(data, list):
-            for entry in data:
-                if isinstance(entry, str):
-                    parent.add_child(TagItem(entry, is_folder=False))
-                elif isinstance(entry, dict):
-                    parent.add_child(TagItem(
-                        entry['value'],
-                        is_folder=False,
-                        display_name=entry.get('display'),
-                        urls=entry.get('urls', []),
-                        starred=entry.get('starred', False),
-                        wiki_url=entry.get('wiki_url'),
-                        aliases=entry.get('aliases', []),
-                        description=entry.get('description', '')
-                    ))
+    # ---------- 数据库初始化 ----------
+    def _copy_default_db(self, target_path):
+        from tag_prompt_builder.app_config import get_resource_path
+        resource_db = get_resource_path('tags.db')
+        if not os.path.exists(resource_db):
+            raise FileNotFoundError(
+                f"默认标签数据库未找到：{resource_db}\n"
+                "请将预构建的 tags.db 放置于 tag_prompt_builder/resources/ 目录下。"
+            )
+        shutil.copy2(resource_db, target_path)
+
+    # 测试辅助方法：直接从字典构建内存树（不访问数据库）
+    def _build_from_dict(self, data, parent_id):
+        sort = 0
+        for key, value in data.items():
+            folder_id = make_tag_id(parent_id, key, sort)
+            folder_item = TagItem({
+                'id': folder_id,
+                'name': key,
+                'display_name': key,
+                'is_folder': 1,
+                'parent_id': parent_id,
+                'sort_order': sort,
+                'single_selection': value.get('single_selection', False) if isinstance(value, dict) else 0,
+                'wiki_url': '',
+                'starred': 0,
+                'description': ''
+            })
+            self._items[folder_id] = folder_item
+            self._children_ids[parent_id].append(folder_id)
+            sort += 1
+            if isinstance(value, dict):
+                children = value.get('children', {})
+                tags = value.get('tags', [])
+                self._build_from_dict(children, folder_id)
+                for i, tag_entry in enumerate(tags):
+                    if isinstance(tag_entry, str):
+                        tag_id = make_tag_id(folder_id, tag_entry, len(self._children_ids[folder_id]))
+                        tag_item = TagItem({
+                            'id': tag_id,
+                            'name': tag_entry,
+                            'display_name': tag_entry,
+                            'is_folder': 0,
+                            'parent_id': folder_id,
+                            'sort_order': i,
+                            'single_selection': 0,
+                            'wiki_url': '',
+                            'starred': 0,
+                            'description': ''
+                        })
+                        self._items[tag_id] = tag_item
+                        self._children_ids[folder_id].append(tag_id)
+                    elif isinstance(tag_entry, dict):
+                        tag_name = tag_entry['value']
+                        display = tag_entry.get('display', tag_name)
+                        tag_id = make_tag_id(folder_id, tag_name, len(self._children_ids[folder_id]))
+                        tag_item = TagItem({
+                            'id': tag_id,
+                            'name': tag_name,
+                            'display_name': display,
+                            'is_folder': 0,
+                            'parent_id': folder_id,
+                            'sort_order': i,
+                            'single_selection': 0,
+                            'wiki_url': tag_entry.get('wiki_url', ''),
+                            'starred': tag_entry.get('starred', 0),
+                            'description': tag_entry.get('description', '')
+                        })
+                        self._items[tag_id] = tag_item
+                        self._children_ids[folder_id].append(tag_id)
+        # 建立树结构
+        for item in self._items.values():
+            if item.parent_id and item.parent_id in self._items:
+                item.parent = self._items[item.parent_id]
+                item.parent.children.append(item)
+
+    @property
+    def root(self):
+        """返回虚拟根节点（测试用）"""
+        root = TagItem({'id': '#root', 'name': 'root', 'display_name': 'root', 'is_folder': 1, 'parent_id': None})
+        root.children = [self._items[cid] for cid in self._children_ids.get('#root', [])]
+        return root
+
+    # ---------- 查询接口 ----------
+    def get_root_children(self):
+        return [self._items[cid] for cid in self._children_ids.get('#root', [])]
+
+    def get_children(self, parent_id):
+        return [self._items[cid] for cid in self._children_ids.get(parent_id, [])]
+
+    def find_item_by_full_id(self, full_id):
+        return self._items.get(full_id)
+
+    def find_item_by_id(self, tag_id):
+        return self.find_item_by_full_id(tag_id)
+
+    def search(self, query):
+        query = query.lower()
+        results = []
+        for item in self._items.values():
+            if not item.is_folder and (query in item.name.lower() or query in item.display_name.lower()):
+                results.append(item)
+        return results
+
+    def get_starred(self):
+        return [item for item in self._items.values() if item.starred and not item.is_folder]
+
+    def toggle_star(self, tag_id, starred):
+        if self.db:
+            self.db.set_starred(tag_id, starred)
+        if tag_id in self._items:
+            self._items[tag_id].starred = starred
+
+    # ---------- 增删改 ----------
+    def add_new_tag(self, parent_id, name, is_folder=False, display_name=None, **kwargs):
+        siblings = self._children_ids.get(parent_id, [])
+        new_sort = len(siblings)
+        new_id = make_tag_id(parent_id, name, new_sort)
+        tag_dict = {
+            'id': new_id,
+            'name': name,
+            'display_name': display_name or name,
+            'is_folder': 1 if is_folder else 0,
+            'parent_id': parent_id,
+            'sort_order': new_sort,
+            'single_selection': 0,
+            'wiki_url': '',
+            'starred': 0,
+            'description': ''
+        }
+        if self.db:
+            self.db.add_tag(tag_dict)
+        new_item = TagItem(tag_dict)
+        self._items[new_id] = new_item
+        self._children_ids[parent_id].append(new_id)
+        # 设置父子关系
+        if parent_id in self._items:
+            new_item.parent = self._items[parent_id]
+            self._items[parent_id].children.append(new_item)
+        return new_item
+
+    def delete_tag(self, tag_id):
+        def _recursive_delete(tid):
+            for child_id in self._children_ids.get(tid, []):
+                _recursive_delete(child_id)
+            # 先获取父节点信息
+            item = self._items.get(tid)
+            parent_id = item.parent_id if item else None
+            if self.db:
+                self.db.delete_tag(tid)
+            if tid in self._items:
+                del self._items[tid]
+            # 从父节点的子列表中移除
+            if parent_id and parent_id in self._children_ids and tid in self._children_ids[parent_id]:
+                self._children_ids[parent_id].remove(tid)
+                # 同时从父节点的 children 列表中移除
+                if parent_id in self._items:
+                    parent = self._items[parent_id]
+                    parent.children = [c for c in parent.children if c.id != tid]
+            elif tid in self._children_ids.get('#root', []):
+                self._children_ids['#root'].remove(tid)
+        _recursive_delete(tag_id)
+
+    def copy_subtree(self, source_id, new_parent_id=None, new_name=None):
+        if not self.db:
+            raise RuntimeError("Database not available")
+        source = self.db.get_tag_by_id(source_id)
+        if not source:
+            raise ValueError("源标签不存在")
+        if new_parent_id is None:
+            new_parent_id = source['parent_id'] or '#root'
+        if new_name is None:
+            new_name = f"{source['name']}_copy"
+        new_id = self.db.copy_subtree(source_id, new_parent_id, new_name)
+        self._reload_cache()
+        return new_id
 
     def save_library(self):
-        data = self._to_dict(self.root)
-        with open(TAGS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        pass
 
-    def _to_dict(self, item):
-        if item.is_folder:
-            result = {}
-            if item.single_selection:
-                result['single_selection'] = True
-            children = {}
-            tags = []
-            for child in item.children:
-                if child.is_folder:
-                    children.update(self._to_dict(child))
-                else:
-                    tag_obj = {"value": child.name}
-                    if child.display_name != child.name:
-                        tag_obj["display"] = child.display_name
-                    if child.wiki_url:
-                        tag_obj["wiki_url"] = child.wiki_url
-                    if child.aliases:
-                        tag_obj["aliases"] = child.aliases
-                    if child.description:
-                        tag_obj["description"] = child.description
-                    if child.urls:
-                        tag_obj["urls"] = child.urls
-                    if child.starred:
-                        tag_obj["starred"] = True
-                    tags.append(tag_obj if len(tag_obj) > 1 else child.name)
-            if children:
-                result['children'] = children
-            if tags:
-                result['tags'] = tags
-            # ---------- 修正根节点返回 ----------
-            if item.parent is None:   # 根节点
-                return children        # 直接返回子文件夹字典，符合原始JSON格式
-            else:
-                return {item.name: result}
-        else:
-            # 叶子节点
-            if item.display_name != item.name or item.wiki_url or item.aliases or item.description or item.urls or item.starred:
-                obj = {"value": item.name}
-                if item.display_name != item.name:
-                    obj["display"] = item.display_name
-                if item.wiki_url:
-                    obj["wiki_url"] = item.wiki_url
-                if item.aliases:
-                    obj["aliases"] = item.aliases
-                if item.description:
-                    obj["description"] = item.description
-                if item.urls:
-                    obj["urls"] = item.urls
-                if item.starred:
-                    obj["starred"] = True
-                return obj
-            return item.name
-
-    def find_item_by_full_id(self, full_id: str) -> TagItem:
-        if not full_id or not full_id.startswith('#root/'):
-            return None
-        parts = full_id[len('#root/'):].split('/')
-        current = self.root
-        for part in parts:
-            if '#' in part:
-                name = part[:part.rindex('#')]
-            else:
-                name = part
-            found = None
-            for child in current.children:
-                if child.name == name:
-                    found = child
-                    break
-            if not found:
-                return None
-            current = found
-        return current if not current.is_folder else None
+    def load_default_library(self):
+        pass
 
     # ---------- 预设管理 ----------
-    def save_folder_preset(self, preset_name, selected_items, sort_structure=None):
+    def save_folder_preset(self, preset_name, selected_ids, sort_structure=None):
         preset = {
             'type': 'folder_preset',
-            'selected': [item.full_id() for item in selected_items],
+            'selected': selected_ids,
             'sort_structure': sort_structure
         }
         path = os.path.join(PRESETS_DIR, f'{preset_name}.json')
@@ -183,22 +253,19 @@ class TagManager:
         return None
 
     def list_tag_presets(self):
-        """列出所有预设（包括文件夹预设和词组预设）"""
         presets = []
-        if not os.path.exists(PRESETS_DIR):
-            return presets
-        for fname in os.listdir(PRESETS_DIR):
-            if fname.endswith('.json'):
-                presets.append(fname[:-5])
+        if os.path.exists(PRESETS_DIR):
+            for fname in os.listdir(PRESETS_DIR):
+                if fname.endswith('.json'):
+                    presets.append(fname[:-5])
         return presets
 
-    def delete_preset(self, preset_name: str):
+    def delete_preset(self, preset_name):
         path = os.path.join(PRESETS_DIR, f'{preset_name}.json')
         if os.path.exists(path):
             os.remove(path)
 
     def save_tag_preset(self, preset_name, tag_ids):
-        """保存简单的标签 ID 列表为词组预设"""
         preset = {'type': 'tag_preset', 'tag_ids': tag_ids}
         path = os.path.join(PRESETS_DIR, f'{preset_name}.json')
         with open(path, 'w', encoding='utf-8') as f:
@@ -211,3 +278,9 @@ class TagManager:
                 data = json.load(f)
             return data.get('tag_ids', []) if data.get('type') == 'tag_preset' else []
         return []
+
+    def find_tag_exact(self, name_or_display):
+        for item in self._items.values():
+            if not item.is_folder and (item.name.lower() == name_or_display.lower() or item.display_name.lower() == name_or_display.lower()):
+                return item
+        return None

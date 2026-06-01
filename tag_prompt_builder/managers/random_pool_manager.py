@@ -1,9 +1,8 @@
-# managers/random_pool_manager.py
+# tag_prompt_builder/managers/random_pool_manager.py
 import json
 import os
-from tag_prompt_builder.app_config import DATA_DIR
-
-RANDOM_POOLS_FILE = os.path.join(DATA_DIR, 'random_pools.json')
+from tag_prompt_builder.app_config import USER_DATA_DIR
+RANDOM_POOLS_FILE = os.path.join(USER_DATA_DIR, 'random_pools.json')
 
 class RandomPoolManager:
     def __init__(self):
@@ -25,7 +24,7 @@ class RandomPoolManager:
             with open(RANDOM_POOLS_FILE, 'w', encoding='utf-8') as f:
                 json.dump(self.pools, f, ensure_ascii=False, indent=2)
         except IOError:
-            pass  # 可加入日志
+            pass
 
     def create_pool(self, name, description=""):
         if name not in self.pools:

@@ -23,34 +23,38 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="app_config.py" />
+    <Compile Include="db.py" />
     <Compile Include="main.py" />
     <Compile Include="managers\random_pool_manager.py" />
     <Compile Include="managers\tag_manager.py" />
+    <Compile Include="managers\__init__.py" />
     <Compile Include="models\tag_item.py" />
     <Compile Include="models\tag_model.py" />
-    <Compile Include="resources\__init__.py" />
-    <Compile Include="ui\dialogs\layered_sort_panel.py" />
+    <Compile Include="models\__init__.py" />
+    <Compile Include="tools\build_default_db.py" />
     <Compile Include="ui\dialogs\pool_tag_edit_dialog.py" />
-    <Compile Include="ui\dialogs\preset_dialog.py" />
     <Compile Include="ui\dialogs\preset_manager_dialog.py" />
     <Compile Include="ui\dialogs\random_pool_manager_dialog.py" />
     <Compile Include="ui\dialogs\random_slot_dialog.py" />
+    <Compile Include="ui\dialogs\__init__.py" />
+    <Compile Include="ui\helpers\random_util.py" />
     <Compile Include="ui\helpers\__init__.py" />
     <Compile Include="ui\main_window.py" />
     <Compile Include="ui\widgets\favorites_panel.py" />
-    <Compile Include="ui\widgets\layered_sort_panel.py" />
+    <Compile Include="ui\widgets\graphic_sort_panel.py" />
     <Compile Include="ui\widgets\preview_panel.py" />
-    <Compile Include="ui\widgets\sort_panel.py" />
     <Compile Include="ui\widgets\tag_detail_panel.py" />
     <Compile Include="ui\widgets\tag_filter_proxy.py" />
     <Compile Include="ui\widgets\tag_tree_view.py" />
     <Compile Include="ui\widgets\__init__.py" />
     <Compile Include="ui\helpers\bracket_checker.py" />
-    <Compile Include="ui\helpers\clipboard.py" />
+    <Compile Include="ui\__init__.py" />
+    <Compile Include="utils.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="models\" />
     <Folder Include="managers\" />
+    <Folder Include="tools\" />
     <Folder Include="resources\" />
     <Folder Include="ui\helpers\" />
     <Folder Include="ui\widgets\" />
@@ -58,8 +62,8 @@
     <Folder Include="ui\dialogs\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="resources\default_tags.json" />
     <Content Include="pyinstaller.spec" />
+    <Content Include="resources\schema.sql" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

@@ -1,4 +1,4 @@
-# ui/dialogs/preset_manager_dialog.py
+# tag_prompt_builder/ui/dialogs/preset_manager_dialog.py
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
                              QListWidget, QListWidgetItem, QMessageBox, QInputDialog)
 from PyQt6.QtCore import Qt
@@ -8,13 +8,13 @@ class PresetManagerDialog(QDialog):
         super().__init__(parent)
         self.tag_manager = tag_manager
         self.main_window = main_window
-        self.setWindowTitle("管理词组预设")
+        self.setWindowTitle("管理组合")
         self.resize(400, 300)
 
         self.list_widget = QListWidget()
         self.refresh_list()
 
-        btn_load = QPushButton("加载到全部")
+        btn_load = QPushButton("加载组合")
         btn_load.clicked.connect(self.load_preset)
         btn_delete = QPushButton("删除")
         btn_delete.clicked.connect(self.delete_preset)
@@ -41,11 +41,11 @@ class PresetManagerDialog(QDialog):
     def load_preset(self):
         current_item = self.list_widget.currentItem()
         if not current_item:
-            QMessageBox.warning(self, "未选择", "请先选择一个预设。")
+            QMessageBox.warning(self, "未选择", "请先选择一个组合。")
             return
         preset_name = current_item.text()
         confirm = QMessageBox.question(self, "确认加载",
-                                       f"加载预设“{preset_name}”将清空当前所有选中并勾选预设中的标签。\n确定要加载吗？",
+                                       f"加载组合“{preset_name}”将清空当前所有选中并勾选组合中的标签。\n确定要加载吗？",
                                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if confirm != QMessageBox.StandardButton.Yes:
             return
@@ -57,7 +57,7 @@ class PresetManagerDialog(QDialog):
         if not current_item:
             return
         preset_name = current_item.text()
-        confirm = QMessageBox.question(self, "确认删除", f"确定要删除预设“{preset_name}”吗？",
+        confirm = QMessageBox.question(self, "确认删除", f"确定要删除组合“{preset_name}”吗？",
                                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if confirm == QMessageBox.StandardButton.Yes:
             self.tag_manager.delete_preset(preset_name)

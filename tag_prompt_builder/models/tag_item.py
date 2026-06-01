@@ -1,49 +1,37 @@
-# models/tag_item.py
-import uuid
-from typing import Optional, List
-
+# tag_prompt_builder/models/tag_item.py
 class TagItem:
-    def __init__(self, name: str, is_folder: bool = False,
-                 parent: Optional['TagItem'] = None,
-                 display_name: Optional[str] = None,
-                 urls: Optional[List[str]] = None,
-                 starred: bool = False,
-                 wiki_url: Optional[str] = None,
-                 aliases: Optional[List[str]] = None,
-                 description: str = ""):
+    __slots__ = ('id', 'name', 'display_name', 'is_folder', 'parent_id',
+                 'single_selection', 'wiki_url', 'aliases', 'urls',
+                 'starred', 'description', 'checked', 'locked',
+                 '_db', 'children', 'parent')
 
-        self.id = str(uuid.uuid4())[:8]
-        self.name = name
-        self.display_name = display_name if display_name is not None else name
-        self.is_folder = is_folder
-        self.parent = parent
-        self.children: List['TagItem'] = []
+    def __init__(self, row_dict=None, **kwargs):
+        if row_dict is None:
+            row_dict = {}
+        # 允许关键字参数覆盖字典值
+        data = {**row_dict, **kwargs}
+        self.id = data.get('id', '')
+        self.name = data.get('name', '')
+        self.display_name = data.get('display_name') or self.name
+        self.is_folder = bool(data.get('is_folder', False))
+        self.parent_id = data.get('parent_id')
+        self.single_selection = bool(data.get('single_selection', False))
+        self.wiki_url = data.get('wiki_url', '')
+        self.starred = bool(data.get('starred', False))
+        self.description = data.get('description', '')
+        self.aliases = []
+        self.urls = []
         self.checked = False
         self.locked = False
-        self.single_selection = False
-        self.urls = urls if urls is not None else []
-        self.starred = starred
-        self.wiki_url = wiki_url
-        self.aliases = aliases if aliases is not None else []
-        self.description = description
+        self.children = []      # 子节点列表
+        self.parent = None      # 父节点引用
 
     def add_child(self, child: 'TagItem'):
         child.parent = self
         self.children.append(child)
 
-    def remove_child(self, child: 'TagItem'):
-        if child in self.children:
-            self.children.remove(child)
-            child.parent = None
+    def full_id(self):
+        return self.id
 
-    def path(self) -> str:
-        if self.parent is None:
-            return ''
-        return f'{self.parent.path()}/{self.name}'
-
-    def full_id(self) -> str:
-        if self.parent is None:
-            return '#root'
-        siblings = self.parent.children
-        idx = siblings.index(self) if self in siblings else -1
-        return f'{self.parent.full_id()}/{self.name}#{idx}'
+    def path(self):
+        return '/'.join(self.id.split('/')[1:])

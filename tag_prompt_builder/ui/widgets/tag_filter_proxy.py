@@ -1,4 +1,4 @@
-# ui/widgets/tag_filter_proxy.py
+# tag_prompt_builder/ui/widgets/tag_filter_proxy.py
 from PyQt6.QtCore import QSortFilterProxyModel, QModelIndex, Qt
 from tag_prompt_builder.models.tag_item import TagItem
 

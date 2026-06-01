@@ -1,4 +1,4 @@
-# ui/widgets/preview_panel.py
+# tag_prompt_builder/ui/widgets/preview_panel.py
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QPushButton, QLabel, QHBoxLayout, QMessageBox
 from PyQt6.QtCore import Qt, pyqtSignal
 from tag_prompt_builder.ui.helpers.bracket_checker import check_brackets
@@ -43,6 +43,9 @@ class PreviewPanel(QWidget):
             return
         valid, msg = check_brackets(self.output_text)
         if not valid:
-            QMessageBox.warning(self, "括号错误", msg)
+            reply = QMessageBox.warning(self, "括号错误", msg + "\n仍要复制吗？",
+                                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.No:
+                return
         pyperclip.copy(self.output_text)
         self.clipboard_copied.emit(self.output_text)

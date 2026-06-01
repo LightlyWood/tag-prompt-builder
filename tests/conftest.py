@@ -1,8 +1,7 @@
 # tests/conftest.py
 import pytest
-from tag_prompt_builder.models.tag_item import TagItem
-from tag_prompt_builder.managers.tag_manager import TagManager
 from PyQt6.QtWidgets import QApplication
+from tag_prompt_builder.managers.tag_manager import TagManager
 
 @pytest.fixture(scope="session")
 def qapp():
@@ -12,32 +11,22 @@ def qapp():
     yield app
 
 @pytest.fixture
-def root_item():
-    """根节点"""
-    return TagItem("root", is_folder=True)
-
-@pytest.fixture
 def tag_manager():
-    """一个空的 TagManager 实例（未加载库）"""
-    return TagManager()
+    """返回一个不加载数据库的空 TagManager"""
+    return TagManager(skip_load=True)
 
 @pytest.fixture
-def sample_tree():
-    """构建一个简单的测试树：
-    root
-    └── Characters
-        ├── Blonde (tag)
-        └── Hair (folder, single_selection)
-            ├── Long (tag)
-            └── Short (tag)
-    """
-    root = TagItem("root", is_folder=True)
-    chars = TagItem("Characters", is_folder=True)
-    root.add_child(chars)
-    chars.add_child(TagItem("Blonde", is_folder=False, display_name="金发"))
-    hair = TagItem("Hair", is_folder=True)
-    hair.single_selection = True
-    chars.add_child(hair)
-    hair.add_child(TagItem("Long", is_folder=False, display_name="长发"))
-    hair.add_child(TagItem("Short", is_folder=False, display_name="短发"))
-    return root
+def sample_tree(tag_manager):
+    """使用 TagManager 的 _build_from_dict 构建测试树"""
+    data = {
+        "Characters": {
+            "children": {
+                "Hair": {
+                    "single_selection": True,
+                    "tags": ["blonde", "silver"]
+                }
+            }
+        }
+    }
+    tag_manager._build_from_dict(data, '#root')
+    return tag_manager.root
